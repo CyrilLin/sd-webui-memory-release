@@ -4,6 +4,7 @@ import modules.scripts as scripts
 import gradio as gr
 import torch
 import gc
+from fastapi import FastAPI
 
 def mem_release():
     try:
@@ -53,11 +54,19 @@ class Script(scripts.Script):
     def postprocess(self, *args):
         if getattr(shared.opts, 'memre_unload', False):
             models.unload_model_weights()
-
         mem_release()
+
+def mem_api(_: gr.Blocks, app: FastAPI):
+    @app.post("/mem/release")
+    async def mem_releaseapi():
+        mem_release()
+        print("api call: mem release, done")
+        return {}
+
 
 def on_ui_settings():
     shared.opts.add_option("memre_debug", shared.OptionInfo(False, "Memory Release - Debug", section=("system", "System")))
     shared.opts.add_option("memre_unload", shared.OptionInfo(False, "Memory Release - Unload Checkpoint after Generation", section=("system", "System")))
 
 script_callbacks.on_ui_settings(on_ui_settings)
+script_callbacks.on_app_started(mem_api)
